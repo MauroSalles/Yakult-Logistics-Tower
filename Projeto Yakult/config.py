@@ -10,6 +10,13 @@ from __future__ import annotations
 import os
 
 # ---------------------------------------------------------------------------
+# UI / Dashboard
+# ---------------------------------------------------------------------------
+APP_TITLE: str = "Yakult Elite Logistics"
+APP_VERSION: str = "5.1"
+APP_ICON: str = "🚀"
+
+# ---------------------------------------------------------------------------
 # External API settings
 # ---------------------------------------------------------------------------
 OSRM_BASE_URL: str = os.getenv(
@@ -19,7 +26,7 @@ OSRM_BASE_URL: str = os.getenv(
 OSRM_TIMEOUT_SECONDS: int = int(os.getenv("OSRM_TIMEOUT_SECONDS", "10"))
 NOMINATIM_USER_AGENT: str = os.getenv(
     "NOMINATIM_USER_AGENT",
-    "yakult_elite_logistics/5.0 (https://github.com/MauroSalles/Yakult-Logistics-Tower)",
+    f"yakult_elite_logistics/{APP_VERSION} (https://github.com/MauroSalles/Yakult-Logistics-Tower)",
 )
 
 # ---------------------------------------------------------------------------
@@ -72,11 +79,8 @@ VELOCIDADE_PADRAO: int = 72
 VELOCIDADE_STEP: int = 5
 
 # ---------------------------------------------------------------------------
-# UI / Dashboard
+# UI / Dashboard (continued)
 # ---------------------------------------------------------------------------
-APP_TITLE: str = "Yakult Elite Logistics"
-APP_VERSION: str = "5.1"
-APP_ICON: str = "🚀"
 MAP_CENTER: tuple[float, float] = (-28.0, -55.0)
 MAP_ZOOM: int = 4
 MAP_TILES: str = "cartodb dark_matter"
