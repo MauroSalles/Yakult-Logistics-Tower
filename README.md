@@ -28,14 +28,20 @@ pip install -r requirements.txt
 streamlit run app_logistica.py
 ```
 
-### Versionamento
+### Funcionalidades do dashboard
 
 O dashboard abre no navegador padrão e permite:
 
-- editar paradas do itinerário
+- editar paradas do itinerário (com validação de entrada e botão ✕ por parada)
 - configurar veículo (modelo/eixos)
-- visualizar custo, distância, ETA e emissões
-- verificar integridade da cadeia fria (temperatura)
+- ajustar velocidade média de operação (slider 40–120 km/h)
+- visualizar custo total com breakdown diesel/pedágio em tooltip
+- tempo estimado de direção em horas e minutos
+- mapa tático em dark mode com rota OSRM e marcadores por parada
+- ETA por parada com status "Partida 🚀" / "No Prazo ✅" e exportação CSV
+- gráfico de emissões CO2 (Diesel / Híbrido / Elétrico) com fórmula consistente
+- monitoramento de cadeia de frio com alertas em 3 níveis (estável / atenção / crítico)
+- contador de paradas no painel de métricas
 
 ## Estrutura de projeto
 
@@ -55,16 +61,10 @@ Após instalar as dependências você pode validar a lógica com `pytest`:
 
 ```bash
 pip install -r requirements.txt    # garante pytest instalado
-pytest -q                         # executa a suíte mínima de testes
+pytest -q                         # executa a suíte de testes
 ```
 
-## Melhorias sugeridas
-
-- adicionar tratamento de exceções e logging mais robusto
-- modularizar código em funções e classes para facilitar testes
-- criar testes automatizados (pytest)
-- usar um `setup.py`/`pyproject.toml` se for transformar em pacote
-- incluir autorização/configuração de chaves (TomTom) usando variáveis de ambiente
+A suíte cobre: `calcula_custos`, `formatar_tempo_conducao`, `calcular_eta_paradas`, `calcular_co2` e `buscar_coords`.
 
 ## Licença
 
