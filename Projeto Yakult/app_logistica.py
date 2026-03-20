@@ -28,6 +28,11 @@ st.markdown("""
 
 # 2. MOTORES DE CÁLCULO
 
+# CO2 emission constants (diesel truck)
+_EFICIENCIA_DIESEL_KM_L = 3.2   # average km per litre for a heavy truck
+_CO2_DIESEL_KG_L = 2.61         # kg of CO2 per litre of diesel
+_CO2_HIBRID_FATOR = 0.54        # hybrid emits ~54 % of diesel (based on industry average)
+
 @st.cache_data(show_spinner=False)
 def buscar_coords(cidade: str) -> tuple[float, float] | None:
     """Return latitude/longitude for a city string or None on failure.
@@ -70,6 +75,16 @@ def calcula_custos(dist_km: float, eixos: int) -> tuple[float, float]:
     custo_total = custo_diesel + custo_pedagio
     return custo_total, custo_pedagio
 
+def calcular_co2(dist_km: float) -> tuple[float, float, float]:
+    """Return (co2_diesel_kg, co2_hibrido_kg, co2_eletrico_kg) for the route.
+
+    Uses consistent fuel-efficiency and emission-factor constants so the
+    summary metric and the ESG comparison chart always agree.
+    """
+    co2_diesel = (dist_km / _EFICIENCIA_DIESEL_KM_L) * _CO2_DIESEL_KG_L
+    co2_hibrido = co2_diesel * _CO2_HIBRID_FATOR
+    return co2_diesel, co2_hibrido, 0.0
+
 def formatar_tempo_conducao(dist_km: float, velocidade: float = 72.0) -> str:
     """Return driving time as a human-readable string (e.g. '14h 30min')."""
     if velocidade <= 0:
@@ -96,7 +111,8 @@ def calcular_eta_paradas(
         parada_km = (dist_km / (n - 1)) * i if n > 1 else 0.0
         tempo_h = parada_km / velocidade if velocidade > 0 else 0.0
         chegada = datetime.datetime.combine(datetime.date.today(), h_partida) + datetime.timedelta(hours=tempo_h)
-        eta_list.append({"Cidade": cid, "Previsão": chegada.strftime("%H:%M"), "Status": "No Prazo ✅"})
+        status = "Partida 🚀" if i == 0 else "No Prazo ✅"
+        eta_list.append({"Cidade": cid, "Previsão": chegada.strftime("%H:%M"), "Status": status})
     return eta_list
 
 # 3. BARRA LATERAL - TELEMETRIA E CONFIGURAÇÃO
@@ -140,6 +156,13 @@ with st.sidebar:
     modelo = st.selectbox("Modelo:", ["Carreta (6 eixos)", "Truck (3 eixos)", "VUC (2 eixos)"])
     eixos = 6 if "6" in modelo else 3 if "3" in modelo else 2
 
+    st.markdown("---")
+    st.subheader("🚗 Parâmetros de Operação")
+    velocidade_media = st.slider(
+        "Velocidade Média (km/h):", 40, 120, 72, step=5,
+        help="Velocidade média utilizada para calcular o tempo de direção e as previsões de chegada (ETA).",
+    )
+
     st.subheader("⚙️ Telemetria em Tempo Real")
     c_pneu, c_oleo = st.columns(2)
     c_pneu.metric("Pressão", "110 PSI", "✅")
@@ -147,35 +170,44 @@ with st.sidebar:
 
 # 4. PROCESSAMENTO DE DADOS
 
-pontos_validos: list[tuple[float, float]] = []
+# Build a paired list of (city_name, coords) to avoid index-mismatch when
+# some cities fail geocoding (avoids wrong popup labels on the map).
+paradas_geocodificadas: list[tuple[str, tuple[float, float]]] = []
 cidades_sem_coords: list[str] = []
 for c in st.session_state.rota:
     coords = buscar_coords(c)
     if coords:
-        pontos_validos.append(coords)
+        paradas_geocodificadas.append((c, coords))
     else:
         cidades_sem_coords.append(c)
+
+pontos_validos = [coords for _, coords in paradas_geocodificadas]
 
 if cidades_sem_coords:
     st.warning(f"⚠️ Não foi possível localizar: {', '.join(cidades_sem_coords)}. Verifique os nomes e tente novamente.")
 
 geometria, dist_m = calcular_rota_osrm(pontos_validos) if len(pontos_validos) >= 2 else ([], 0.0)
+if len(pontos_validos) >= 2 and not geometria:
+    st.warning("⚠️ Não foi possível calcular a rota via OSRM. Verifique sua conexão com a internet.")
+
 dist_km = dist_m / 1000.0
 custo_total, custo_pedagio = calcula_custos(dist_km, eixos)
-custo_diesel = custo_total - custo_pedagio
+custo_diesel_custo = custo_total - custo_pedagio
+co2_diesel, co2_hibrido, co2_eletrico = calcular_co2(dist_km)
 
 # 5. DASHBOARD PRINCIPAL
 st.title("🚛 Yakult Tower 5.0 - Central de Inteligência")
 
-m1, m2, m3, m4 = st.columns(4)
+m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("Distância Total", f"{dist_km:.1f} km")
 m2.metric(
     "Custo Operacional",
     f"R$ {custo_total:.2f}",
-    help=f"Diesel: R$ {custo_diesel:.2f} | Pedágio: R$ {custo_pedagio:.2f}",
+    help=f"Diesel: R$ {custo_diesel_custo:.2f} | Pedágio: R$ {custo_pedagio:.2f}",
 )
-m3.metric("Tempo Est. Direção", formatar_tempo_conducao(dist_km))
-m4.metric("Pegada CO2", f"{(dist_km/3.2)*2.61:.1f} kg", "ESG")
+m3.metric("Tempo Est. Direção", formatar_tempo_conducao(dist_km, velocidade_media))
+m4.metric("Pegada CO2", f"{co2_diesel:.1f} kg", "ESG")
+m5.metric("Paradas", str(len(st.session_state.rota)))
 
 # 6. MAPA TÁTICO (DARK MODE)
 st.subheader("🗺️ Monitoramento Tático de Rota")
@@ -185,10 +217,10 @@ if geometria:
     folium_coords = [[p[1], p[0]] for p in geometria]
     folium.PolyLine(folium_coords, color="#00FFCC", weight=5, opacity=0.8).add_to(m)
 
-for i, coords in enumerate(pontos_validos):
+for cidade, coords in paradas_geocodificadas:
     folium.Marker(
         coords,
-        popup=st.session_state.rota[i],
+        popup=cidade,
         icon=folium.Icon(color='blue', icon='truck', prefix='fa'),
     ).add_to(m)
 
@@ -201,7 +233,7 @@ with col_plan:
     st.subheader("📅 Planejamento de Chegada (ETA)")
     h_partida = st.time_input("Horário de Partida:", datetime.time(8, 0))
 
-    eta_list = calcular_eta_paradas(st.session_state.rota, dist_km, h_partida)
+    eta_list = calcular_eta_paradas(st.session_state.rota, dist_km, h_partida, velocidade_media)
     df_eta = pd.DataFrame(eta_list)
     st.table(df_eta)
     st.download_button(
@@ -215,7 +247,7 @@ with col_esg:
     st.subheader("📊 Sustentabilidade")
     dados_esg = pd.DataFrame({
         'Cenário': ['Diesel', 'Híbrido', 'Elétrico'],
-        'CO2 (kg)': [((dist_km/3)*2.6), ((dist_km/3)*1.4), 0]
+        'CO2 (kg)': [co2_diesel, co2_hibrido, co2_eletrico],
     })
     st.bar_chart(dados_esg, x='Cenário', y='CO2 (kg)', color="#00FFCC")
 
