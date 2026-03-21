@@ -1,10 +1,17 @@
 # Virtual environment directories
 env2/
 .venv/
+venv/
 
 # Python cache files
 __pycache__/
 *.py[cod]
+*.pyo
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
 
 # Jupyter notebooks checkpoints
 .ipynb_checkpoints/
@@ -12,9 +19,26 @@ __pycache__/
 # Streamlit and other configs
 *.log
 
+# Ruff / linter caches
+.ruff_cache/
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
 # OS files
 .DS_Store
 Thumbs.db
 
-# VS Code files
+# IDE / Editor files
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env

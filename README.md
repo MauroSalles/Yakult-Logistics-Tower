@@ -1,71 +1,137 @@
-# Yakult Elite Logistics
+# 🚛 Yakult Logística Elite
 
-Projeto de visualização e análise logística para a cadeia de distribuição da Yakult. Inclui um dashboard interativo construído com **Streamlit**, mapeamento espacial com **Folium** e cálculo de rotas via **OSRM**.
+> Dashboard interativo de logística para a rede de distribuição Yakult com cadeia de frio na América do Sul.
 
-## Arquivos principais
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Streamlit](https://img.shields.io/badge/streamlit-1.54-red)
+![Licença: MIT](https://img.shields.io/badge/licença-MIT-green)
 
-- `app_logistica.py`: aplicação principal em Streamlit. Exibe itinerário, métricas, mapa e simulações de ETA, custos e sustentabilidade.
-- `mapa_yakult.ipynb`: notebook exploratório com exemplos de geocodificação, plotting e cálculos de custo.
-- `Relatorio_Logistica_Yakult.pdf`: relatório final do projeto.
+---
+
+## Visão Geral
+
+**Yakult Logística Elite** é um dashboard de comando e controle baseado em Streamlit que
+oferece planejamento de rotas em tempo real, análise de custos, estimativa de pegada
+de CO₂ e monitoramento de integridade da cadeia de frio para a frota de distribuição
+Yakult operando no Brasil, Argentina e Chile.
+
+### Funcionalidades principais
+
+| Funcionalidade | Descrição |
+|----------------|-----------|
+| **Planejamento de rotas** | Adicionar / remover paradas, geocodificar via Nominatim e calcular rotas rodoviárias ótimas pela API OSRM |
+| **Análise de custos** | Breakdown diesel + pedágio por km, com tipo de veículo configurável (2 / 3 / 6 eixos) |
+| **Previsão de ETA** | Horário de chegada por parada baseado em velocidade média ajustável (40 – 120 km/h) com exportação CSV |
+| **Dashboard ESG** | Comparação lado a lado de CO₂ — Diesel vs Híbrido vs Elétrico |
+| **Monitor de cadeia de frio** | Slider de temperatura com sistema de alerta em 3 níveis (estável / atenção / crítico) |
+| **Mapa tático** | Mapa Folium em dark mode com sobreposição de rota GeoJSON e marcadores de caminhão |
+
+---
 
 ## Pré-requisitos
 
-- Python 3.10+ (testado em 3.11)
-- Virtualenv ou venv para isolar dependências
+- **Python 3.10+** (testado em 3.11 / 3.12)
+- Ambiente virtual é recomendado
 
-Instalação das dependências:
+## Início rápido
 
 ```bash
-python -m venv env2             # cria ambiente
-source env2/Scripts/activate     # Windows (PowerShell)
-# ou `source env2/bin/activate` no Unix
+# 1. Clone o repositório
+git clone https://github.com/MauroSalles/Yakult-Logistics-Tower.git
+cd Yakult-Logistics-Tower/Projeto\ Yakult
+
+# 2. Crie e ative um ambiente virtual
+python -m venv .venv
+source .venv/bin/activate   # Linux / macOS
+# .venv\Scripts\activate    # Windows
+
+# 3. Instale as dependências
 pip install -r requirements.txt
-```
 
-## Uso
-
-```bash
+# 4. Inicie o dashboard
 streamlit run app_logistica.py
 ```
 
-### Funcionalidades do dashboard
+O dashboard abre automaticamente no navegador padrão.
 
-O dashboard abre no navegador padrão e permite:
+---
 
-- editar paradas do itinerário (com validação de entrada e botão ✕ por parada)
-- configurar veículo (modelo/eixos)
-- ajustar velocidade média de operação (slider 40–120 km/h)
-- visualizar custo total com breakdown diesel/pedágio em tooltip
-- tempo estimado de direção em horas e minutos
-- mapa tático em dark mode com rota OSRM e marcadores por parada
-- ETA por parada com status "Partida 🚀" / "No Prazo ✅" e exportação CSV
-- gráfico de emissões CO2 (Diesel / Híbrido / Elétrico) com fórmula consistente
-- monitoramento de cadeia de frio com alertas em 3 níveis (estável / atenção / crítico)
-- contador de paradas no painel de métricas
-
-## Estrutura de projeto
+## Estrutura do projeto
 
 ```
-Projeto_Yakult/
-├── app_logistica.py
-├── mapa_yakult.ipynb
-├── Relatorio_Logistica_Yakult.pdf
-├── requirements.txt
-├── README.md
-└── .gitignore
-``` 
+Projeto Yakult/
+├── app_logistica.py          # Aplicação principal em Streamlit
+├── config.py                 # Configuração centralizada (constantes, limiares, APIs)
+├── tests/
+│   └── test_app.py           # Suíte de testes Pytest (31 testes)
+├── mapa_yakult.ipynb          # Notebook Jupyter exploratório
+├── requirements.txt           # Dependências Python fixadas
+├── pyproject.toml             # Metadados do projeto + configs de ferramentas (ruff, pytest)
+├── Makefile                   # Atalhos para desenvolvedores (run, test, lint, format)
+├── Relatorio_Logistica_Yakult.pdf  # Relatório final do projeto
+└── LICENSE                    # MIT
+```
+
+## Configuração
+
+Todos os parâmetros ajustáveis estão centralizados em [`config.py`](Projeto%20Yakult/config.py).
+Cada constante pode ser sobrescrita via variáveis de ambiente — sem necessidade de alterar código:
+
+```bash
+export OSRM_BASE_URL="http://seu-osrm-instance:5000"
+export CUSTO_DIESEL_POR_KM="2.50"
+export TEMP_CRITICO="10"
+streamlit run app_logistica.py
+```
+
+Veja a lista completa de valores configuráveis no cabeçalho do arquivo.
+
+---
 
 ## Testes
 
-Após instalar as dependências você pode validar a lógica com `pytest`:
-
 ```bash
-pip install -r requirements.txt    # garante pytest instalado
-pytest -q                         # executa a suíte de testes
+# Executar a suíte completa
+make test
+# ou
+python -m pytest
+
+# Executar com saída detalhada
+python -m pytest -v
 ```
 
-A suíte cobre: `calcula_custos`, `formatar_tempo_conducao`, `calcular_eta_paradas`, `calcular_co2` e `buscar_coords`.
+A suíte cobre: `calcula_custos`, `formatar_tempo_conducao`, `calcular_eta_paradas`,
+`calcular_co2`, `buscar_coords` e o módulo de configuração.
+
+## Desenvolvimento
+
+```bash
+# Lint (somente leitura)
+make lint
+
+# Auto-formatação
+make format
+
+# Limpar caches
+make clean
+```
+
+---
+
+## Arquitetura
+
+```
+┌──────────────┐   HTTP/JSON   ┌───────────────────┐
+│  Nominatim   │◄─────────────►│                   │
+│ (geocodific.)│               │   app_logistica   │
+└──────────────┘               │      .py          │
+                               │                   │
+┌──────────────┐   HTTP/JSON   │   ┌───────────┐   │   ┌────────────┐
+│   API OSRM   │◄─────────────►│   │ config.py │   │──►│  Streamlit │
+│   (rotas)    │               │   └───────────┘   │   │  Navegador │
+└──────────────┘               └───────────────────┘   └────────────┘
+```
 
 ## Licença
 
-Este projeto está licenciado sob a [MIT](LICENSE).
+Este projeto está licenciado sob a [Licença MIT](Projeto%20Yakult/LICENSE).
