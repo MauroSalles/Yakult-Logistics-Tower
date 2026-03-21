@@ -64,7 +64,7 @@ O dashboard abre no navegador padrão e permite:
 - mapa tático em dark mode com rota OSRM e marcadores por parada
 - ETA por parada com status "Partida 🚀" / "No Prazo ✅" e exportação CSV
 - gráfico de emissões CO2 (Diesel / Híbrido / Elétrico) com fórmula consistente
-- monitoramento de cadeia de frio com alertes em 3 níveis (estável / atenção / crítico)
+- monitoramento de cadeia de frio com alertas em 3 níveis (estável / atenção / crítico)
 - contador de paradas no painel de métricas
 - **💾 salvar e consultar histórico de rotas no banco de dados na nuvem**
 
