@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import sys
 import pytest
@@ -15,6 +16,29 @@ from app_logistica import (
     _EFICIENCIA_DIESEL_KM_L,
     _CO2_DIESEL_KG_L,
     _CO2_HIBRID_FATOR,
+)
+
+from config import (
+    CUSTO_DIESEL_POR_KM,
+    CUSTO_PEDAGIO_POR_EIXO_KM,
+    EFICIENCIA_DIESEL_KM_L as CFG_EFICIENCIA,
+    CO2_DIESEL_KG_L as CFG_CO2_KG_L,
+    CO2_HIBRID_FATOR as CFG_HIBRID,
+    VELOCIDADE_PADRAO,
+    ROTA_PADRAO,
+    TEMP_CRITICA,
+    TEMP_ATENCAO,
+)
+
+from database import (
+    Base,
+    HistoricoRota,
+    inicializar_banco,
+    salvar_rota,
+    listar_rotas,
+    excluir_rota,
+    _get_engine,
+    get_session,
 )
 
 
@@ -154,4 +178,122 @@ def test_calcular_co2_metric_matches_chart():
     diesel, hibrido, _ = calcular_co2(dist)
     # Both are derived from the same constants — verify ratio is stable
     assert pytest.approx(hibrido / diesel, rel=1e-6) == _CO2_HIBRID_FATOR
+
+
+# --- config.py ---
+
+def test_config_constants_match_app():
+    """As constantes re-exportadas em app_logistica devem coincidir com config.py."""
+    assert _EFICIENCIA_DIESEL_KM_L == CFG_EFICIENCIA
+    assert _CO2_DIESEL_KG_L == CFG_CO2_KG_L
+    assert _CO2_HIBRID_FATOR == CFG_HIBRID
+
+
+def test_config_rota_padrao_is_list():
+    assert isinstance(ROTA_PADRAO, list)
+    assert len(ROTA_PADRAO) >= 1
+
+
+def test_config_temp_limiares():
+    assert TEMP_CRITICA > TEMP_ATENCAO
+
+
+# --- database.py (usando SQLite em memória para CI) ---
+
+@pytest.fixture()
+def db_sqlite(monkeypatch):
+    """Configura um banco SQLite em memória para os testes de database.py."""
+    import database as db_mod
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine)
+
+    monkeypatch.setattr(db_mod, "_engine", engine)
+    monkeypatch.setattr(db_mod, "_SessionLocal", factory)
+
+    yield engine
+
+    # cleanup
+    monkeypatch.setattr(db_mod, "_engine", None)
+    monkeypatch.setattr(db_mod, "_SessionLocal", None)
+
+
+def test_historico_rota_cidades_json():
+    cidades = ["São Paulo", "Rio de Janeiro"]
+    json_str = HistoricoRota.cidades_para_json(cidades)
+    parsed = json.loads(json_str)
+    assert parsed == cidades
+
+
+def test_historico_rota_get_cidades():
+    rota = HistoricoRota(cidades_json='["A","B"]')
+    assert rota.get_cidades() == ["A", "B"]
+
+
+def test_historico_rota_get_cidades_invalid_json():
+    rota = HistoricoRota(cidades_json="invalid")
+    assert rota.get_cidades() == []
+
+
+def test_salvar_e_listar_rota(db_sqlite):
+    ok = salvar_rota(
+        nome="Teste",
+        cidades=["A", "B"],
+        distancia_km=100.0,
+        custo_total=500.0,
+        custo_pedagio=96.0,
+        co2_diesel_kg=81.6,
+        tempo_estimado="1h 23min",
+        veiculo="Truck (3 eixos)",
+    )
+    assert ok is True
+
+    rotas = listar_rotas(limite=10)
+    assert len(rotas) == 1
+    assert rotas[0]["nome"] == "Teste"
+    assert rotas[0]["cidades"] == ["A", "B"]
+    assert rotas[0]["distancia_km"] == 100.0
+
+
+def test_excluir_rota(db_sqlite):
+    salvar_rota("Para excluir", ["X"], 0, 0, 0, 0, "—", "VUC")
+    rotas = listar_rotas()
+    assert len(rotas) == 1
+
+    ok = excluir_rota(rotas[0]["id"])
+    assert ok is True
+    assert listar_rotas() == []
+
+
+def test_listar_rotas_sem_banco():
+    """Sem DATABASE_URL configurada, listar_rotas retorna lista vazia."""
+    import database as db_mod
+    # Garante que _engine e _SessionLocal estão None (modo offline)
+    original_engine = db_mod._engine
+    original_session = db_mod._SessionLocal
+    db_mod._engine = None
+    db_mod._SessionLocal = None
+    try:
+        assert listar_rotas() == []
+    finally:
+        db_mod._engine = original_engine
+        db_mod._SessionLocal = original_session
+
+
+def test_salvar_rota_sem_banco():
+    """Sem banco configurado, salvar_rota retorna False sem erro."""
+    import database as db_mod
+    original_engine = db_mod._engine
+    original_session = db_mod._SessionLocal
+    db_mod._engine = None
+    db_mod._SessionLocal = None
+    try:
+        ok = salvar_rota("X", ["A"], 0, 0, 0, 0, "—", "VUC")
+        assert ok is False
+    finally:
+        db_mod._engine = original_engine
+        db_mod._SessionLocal = original_session
 

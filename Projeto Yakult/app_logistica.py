@@ -9,14 +9,36 @@ import datetime
 # 1. SETUP DE ALTA PERFORMANCE
 import logging
 
-st.set_page_config(page_title="Yakult Elite Logistics", layout="wide", page_icon="🚀")
+from config import (
+    APP_TITLE,
+    APP_VERSION,
+    APP_ICON,
+    CO2_DIESEL_KG_L,
+    CO2_HIBRID_FATOR,
+    CUSTO_DIESEL_POR_KM,
+    CUSTO_PEDAGIO_POR_EIXO_KM,
+    EFICIENCIA_DIESEL_KM_L,
+    NOMINATIM_USER_AGENT,
+    OSRM_BASE_URL,
+    OSRM_TIMEOUT_S,
+    ROTA_PADRAO,
+    TEMP_ATENCAO,
+    TEMP_CRITICA,
+    VELOCIDADE_PADRAO,
+)
+from database import inicializar_banco, listar_rotas, salvar_rota
+
+st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon=APP_ICON)
 
 # configure basic logging to console
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s:%(message)s")
 logger = logging.getLogger(__name__)
 
+# Inicializa o banco de dados na nuvem (cria tabelas se necessário)
+db_disponivel = inicializar_banco()
+
 # geocoder instance reused across calls
-geolocator = Nominatim(user_agent="yakult_elite_v5")
+geolocator = Nominatim(user_agent=NOMINATIM_USER_AGENT)
 
 # Estilo para os Cards de Métricas
 st.markdown("""
@@ -28,10 +50,10 @@ st.markdown("""
 
 # 2. MOTORES DE CÁLCULO
 
-# CO2 emission constants (diesel truck)
-_EFICIENCIA_DIESEL_KM_L = 3.2   # average km per litre for a heavy truck
-_CO2_DIESEL_KG_L = 2.61         # kg of CO2 per litre of diesel
-_CO2_HIBRID_FATOR = 0.54        # hybrid emits ~54 % of diesel (based on industry average)
+# Constantes de emissão importadas de config.py para uso público nos testes
+_EFICIENCIA_DIESEL_KM_L = EFICIENCIA_DIESEL_KM_L
+_CO2_DIESEL_KG_L = CO2_DIESEL_KG_L
+_CO2_HIBRID_FATOR = CO2_HIBRID_FATOR
 
 @st.cache_data(show_spinner=False)
 def buscar_coords(cidade: str) -> tuple[float, float] | None:
@@ -55,9 +77,9 @@ def calcular_rota_osrm(pontos: list[tuple[float, float]]) -> tuple[list, float]:
     Returns a tuple (geometry, distance_meters). Geometry is a list of [lon,lat] points.
     """
     locs = ";".join([f"{lon},{lat}" for lat, lon in pontos])
-    url = f"http://router.project-osrm.org/route/v1/driving/{locs}?overview=full&geometries=geojson"
+    url = f"{OSRM_BASE_URL}/route/v1/driving/{locs}?overview=full&geometries=geojson"
     try:
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=OSRM_TIMEOUT_S)
         r.raise_for_status()
         data = r.json()
         if data.get('code') == 'Ok':
@@ -70,8 +92,8 @@ def calcular_rota_osrm(pontos: list[tuple[float, float]]) -> tuple[list, float]:
 
 def calcula_custos(dist_km: float, eixos: int) -> tuple[float, float]:
     """Return (custo_total, custo_pedagio) for a given distance and number of eixo."""
-    custo_diesel = dist_km * 2.15
-    custo_pedagio = dist_km * (eixos * 0.48)
+    custo_diesel = dist_km * CUSTO_DIESEL_POR_KM
+    custo_pedagio = dist_km * (eixos * CUSTO_PEDAGIO_POR_EIXO_KM)
     custo_total = custo_diesel + custo_pedagio
     return custo_total, custo_pedagio
 
@@ -85,7 +107,7 @@ def calcular_co2(dist_km: float) -> tuple[float, float, float]:
     co2_hibrido = co2_diesel * _CO2_HIBRID_FATOR
     return co2_diesel, co2_hibrido, 0.0
 
-def formatar_tempo_conducao(dist_km: float, velocidade: float = 72.0) -> str:
+def formatar_tempo_conducao(dist_km: float, velocidade: float = VELOCIDADE_PADRAO) -> str:
     """Return driving time as a human-readable string (e.g. '14h 30min')."""
     if velocidade <= 0:
         return "—"
@@ -98,7 +120,7 @@ def calcular_eta_paradas(
     rota: list[str],
     dist_km: float,
     h_partida: datetime.time,
-    velocidade: float = 72.0,
+    velocidade: float = VELOCIDADE_PADRAO,
 ) -> list[dict]:
     """Return a list of ETA dicts for each stop in *rota*.
 
@@ -122,7 +144,7 @@ with st.sidebar:
 
     # Gestão de Itinerário
     if 'rota' not in st.session_state:
-        st.session_state.rota = ["Lorena, SP, Brazil", "Buenos Aires, Argentina", "Santiago, Chile"]
+        st.session_state.rota = list(ROTA_PADRAO)
 
     with st.expander("📍 Editar Itinerário", expanded=True):
         nova_cidade = st.text_input("Nova Parada:")
@@ -139,7 +161,7 @@ with st.sidebar:
                     st.rerun()
         with col_reset:
             if st.button("🗑️ Resetar", use_container_width=True):
-                st.session_state.rota = ["Lorena, SP, Brazil"]
+                st.session_state.rota = [ROTA_PADRAO[0]]
                 st.rerun()
 
         st.markdown("**Paradas atuais:**")
@@ -196,7 +218,7 @@ custo_diesel_custo = custo_total - custo_pedagio
 co2_diesel, co2_hibrido, co2_eletrico = calcular_co2(dist_km)
 
 # 5. DASHBOARD PRINCIPAL
-st.title("🚛 Yakult Tower 5.0 - Central de Inteligência")
+st.title(f"🚛 Yakult Tower {APP_VERSION} - Central de Inteligência")
 
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("Distância Total", f"{dist_km:.1f} km")
@@ -255,11 +277,67 @@ with col_esg:
 st.markdown("---")
 st.subheader("🌡️ Integridade da Carga (Yakult Cold Chain)")
 temp = st.slider("Temperatura do Baú (°C):", -2, 15, 4)
-if temp > 8:
+if temp > TEMP_CRITICA:
     st.error(f"🚨 ALERTA CRÍTICO: Temperatura em {temp}°C. Risco de perda de carga!")
-elif temp > 6:
+elif temp > TEMP_ATENCAO:
     st.warning(f"⚠️ ATENÇÃO: Temperatura em {temp}°C. Monitore de perto.")
 else:
     st.success(f"✅ Temperatura Estável: {temp}°C")
 
-st.caption(f"Yakult Elite Logistics v5.0 - {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}")
+# 9. PERSISTÊNCIA NA NUVEM — Histórico de Rotas
+st.markdown("---")
+st.subheader("💾 Histórico de Rotas (Banco de Dados Nuvem)")
+
+if db_disponivel:
+    col_salvar, col_nome = st.columns([1, 2])
+    with col_nome:
+        nome_rota = st.text_input(
+            "Nome da rota:",
+            value=f"Rota {datetime.datetime.now().strftime('%d/%m %H:%M')}",
+            key="nome_rota_input",
+        )
+    with col_salvar:
+        st.write("")  # espaçamento visual
+        if st.button("💾 Salvar Rota Atual", use_container_width=True):
+            sucesso = salvar_rota(
+                nome=nome_rota,
+                cidades=st.session_state.rota,
+                distancia_km=dist_km,
+                custo_total=custo_total,
+                custo_pedagio=custo_pedagio,
+                co2_diesel_kg=co2_diesel,
+                tempo_estimado=formatar_tempo_conducao(dist_km, velocidade_media),
+                veiculo=modelo,
+            )
+            if sucesso:
+                st.success("✅ Rota salva com sucesso no banco de dados!")
+                st.rerun()
+            else:
+                st.error("❌ Erro ao salvar a rota.")
+
+    historico = listar_rotas(limite=10)
+    if historico:
+        st.markdown("**Últimas rotas salvas:**")
+        df_hist = pd.DataFrame(historico)
+        df_hist = df_hist.rename(columns={
+            "nome": "Nome",
+            "cidades": "Cidades",
+            "distancia_km": "Distância (km)",
+            "custo_total": "Custo Total (R$)",
+            "co2_diesel_kg": "CO₂ (kg)",
+            "tempo_estimado": "Tempo Est.",
+            "veiculo": "Veículo",
+            "criado_em": "Data",
+        })
+        colunas_exibir = ["Nome", "Cidades", "Distância (km)", "Custo Total (R$)", "CO₂ (kg)", "Tempo Est.", "Veículo", "Data"]
+        st.dataframe(df_hist[colunas_exibir], use_container_width=True, hide_index=True)
+    else:
+        st.info("📭 Nenhuma rota salva ainda. Clique em 'Salvar Rota Atual' para começar.")
+else:
+    st.info(
+        "ℹ️ Banco de dados não configurado. Defina a variável de ambiente "
+        "`DATABASE_URL` com a URL do seu PostgreSQL na nuvem para ativar o "
+        "histórico de rotas. Consulte `.env.example` para exemplos."
+    )
+
+st.caption(f"{APP_TITLE} v{APP_VERSION} - {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}")
