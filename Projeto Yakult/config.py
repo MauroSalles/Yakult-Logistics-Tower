@@ -1,8 +1,8 @@
-"""Centralised configuration for Yakult Elite Logistics.
+"""Configuração centralizada do Yakult Logística Elite.
 
-All tunable constants live here so the rest of the code base imports a single
-source of truth.  Values are read from environment variables when available,
-falling back to sensible defaults.
+Todas as constantes ajustáveis ficam aqui para que o restante do código importe
+uma única fonte de verdade.  Os valores são lidos de variáveis de ambiente quando
+disponíveis, usando padrões sensatos como fallback.
 """
 
 from __future__ import annotations
@@ -10,14 +10,14 @@ from __future__ import annotations
 import os
 
 # ---------------------------------------------------------------------------
-# UI / Dashboard
+# Interface / Dashboard
 # ---------------------------------------------------------------------------
-APP_TITLE: str = "Yakult Elite Logistics"
+APP_TITLE: str = "Yakult Logística Elite"
 APP_VERSION: str = "5.1"
 APP_ICON: str = "🚀"
 
 # ---------------------------------------------------------------------------
-# External API settings
+# Configurações de APIs externas
 # ---------------------------------------------------------------------------
 OSRM_BASE_URL: str = os.getenv(
     "OSRM_BASE_URL",
@@ -30,7 +30,7 @@ NOMINATIM_USER_AGENT: str = os.getenv(
 )
 
 # ---------------------------------------------------------------------------
-# Cost parameters
+# Parâmetros de custo
 # ---------------------------------------------------------------------------
 CUSTO_DIESEL_POR_KM: float = float(os.getenv("CUSTO_DIESEL_POR_KM", "2.15"))
 CUSTO_PEDAGIO_POR_EIXO_KM: float = float(
@@ -38,7 +38,7 @@ CUSTO_PEDAGIO_POR_EIXO_KM: float = float(
 )
 
 # ---------------------------------------------------------------------------
-# CO₂ emission factors
+# Fatores de emissão de CO₂
 # ---------------------------------------------------------------------------
 EFICIENCIA_DIESEL_KM_L: float = float(
     os.getenv("EFICIENCIA_DIESEL_KM_L", "3.2"),
@@ -47,13 +47,13 @@ CO2_DIESEL_KG_L: float = float(os.getenv("CO2_DIESEL_KG_L", "2.61"))
 CO2_HIBRID_FATOR: float = float(os.getenv("CO2_HIBRID_FATOR", "0.54"))
 
 # ---------------------------------------------------------------------------
-# Cold-chain thresholds (°C)
+# Limiares da cadeia de frio (°C)
 # ---------------------------------------------------------------------------
 TEMP_CRITICO: int = int(os.getenv("TEMP_CRITICO", "8"))
 TEMP_ATENCAO: int = int(os.getenv("TEMP_ATENCAO", "6"))
 
 # ---------------------------------------------------------------------------
-# Vehicle catalogue  {label: axle_count}
+# Catálogo de veículos  {rótulo: qtd_eixos}
 # ---------------------------------------------------------------------------
 VEICULOS: dict[str, int] = {
     "Carreta (6 eixos)": 6,
@@ -62,7 +62,7 @@ VEICULOS: dict[str, int] = {
 }
 
 # ---------------------------------------------------------------------------
-# Default route
+# Rota padrão
 # ---------------------------------------------------------------------------
 ROTA_PADRAO: list[str] = [
     "Lorena, SP, Brazil",
@@ -71,7 +71,7 @@ ROTA_PADRAO: list[str] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Operational limits
+# Limites operacionais
 # ---------------------------------------------------------------------------
 VELOCIDADE_MIN: int = 40
 VELOCIDADE_MAX: int = 120
@@ -79,7 +79,7 @@ VELOCIDADE_PADRAO: int = 72
 VELOCIDADE_STEP: int = 5
 
 # ---------------------------------------------------------------------------
-# UI / Dashboard (continued)
+# Interface / Dashboard (continuação)
 # ---------------------------------------------------------------------------
 MAP_CENTER: tuple[float, float] = (-28.0, -55.0)
 MAP_ZOOM: int = 4

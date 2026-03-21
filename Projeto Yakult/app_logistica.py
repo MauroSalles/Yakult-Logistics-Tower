@@ -1,7 +1,8 @@
-"""Yakult Elite Logistics – interactive Streamlit dashboard.
+"""Yakult Logística Elite – dashboard interativo em Streamlit.
 
-Provides route planning, cost analysis, CO₂ estimation, and cold-chain
-monitoring for the Yakult distribution network in South America.
+Oferece planejamento de rotas, análise de custos, estimativa de CO₂ e
+monitoramento de cadeia de frio para a rede de distribuição Yakult na
+América do Sul.
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ from config import (
 )
 
 # ---------------------------------------------------------------------------
-# 1. SETUP
+# 1. CONFIGURAÇÃO INICIAL
 # ---------------------------------------------------------------------------
 
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon=APP_ICON)
@@ -71,18 +72,18 @@ st.markdown(
 # 2. MOTORES DE CÁLCULO
 # ---------------------------------------------------------------------------
 
-# Public aliases so test_app.py can keep importing them by old name.
+# Aliases públicos para que test_app.py continue importando pelo nome antigo.
 _EFICIENCIA_DIESEL_KM_L: float = EFICIENCIA_DIESEL_KM_L
 _CO2_DIESEL_KG_L: float = CO2_DIESEL_KG_L
 _CO2_HIBRID_FATOR: float = CO2_HIBRID_FATOR
 
 @st.cache_data(show_spinner=False)
 def buscar_coords(cidade: str) -> tuple[float, float] | None:
-    """Return ``(latitude, longitude)`` for *cidade*, or ``None`` on failure.
+    """Retorna ``(latitude, longitude)`` para *cidade*, ou ``None`` em caso de falha.
 
-    Results are cached by Streamlit so repeated calls for the same city do not
-    hit the Nominatim service again during the same session.  Up to two retries
-    are attempted for transient network errors.
+    Os resultados são cacheados pelo Streamlit para que chamadas repetidas para a
+    mesma cidade não acessem o serviço Nominatim novamente durante a sessão.
+    Até duas tentativas são feitas para erros de rede transitórios.
     """
     tentativas = 2
     for tentativa in range(1, tentativas + 1):
@@ -92,7 +93,7 @@ def buscar_coords(cidade: str) -> tuple[float, float] | None:
                 logger.debug("Geocoded %s -> %s,%s", cidade, loc.latitude, loc.longitude)
                 return (loc.latitude, loc.longitude)
             logger.warning("Não foi possível geocodificar: %s", cidade)
-            return None  # city not found — no point retrying
+            return None  # cidade não encontrada — não vale a pena tentar de novo
         except Exception:
             logger.warning(
                 "Tentativa %d/%d falhou ao geocodificar '%s'",
@@ -104,10 +105,10 @@ def buscar_coords(cidade: str) -> tuple[float, float] | None:
     return None
 
 def calcular_rota_osrm(pontos: list[tuple[float, float]]) -> tuple[list, float]:
-    """Calculate a driving route through *pontos* via the OSRM API.
+    """Calcula uma rota rodoviária passando por *pontos* via a API OSRM.
 
-    Returns ``(geometry, distance_metres)`` where *geometry* is a list of
-    ``[lon, lat]`` coordinate pairs.  On failure returns ``([], 0.0)``.
+    Retorna ``(geometria, distancia_metros)`` onde *geometria* é uma lista de
+    pares ``[lon, lat]``.  Em caso de falha retorna ``([], 0.0)``.
     """
     locs = ";".join(f"{lon},{lat}" for lat, lon in pontos)
     url = f"{OSRM_BASE_URL}/route/v1/driving/{locs}?overview=full&geometries=geojson"
@@ -124,23 +125,23 @@ def calcular_rota_osrm(pontos: list[tuple[float, float]]) -> tuple[list, float]:
     return [], 0.0
 
 def calcula_custos(dist_km: float, eixos: int) -> tuple[float, float]:
-    """Return ``(custo_total, custo_pedagio)`` for a given distance and axle count."""
+    """Retorna ``(custo_total, custo_pedagio)`` para uma distância e quantidade de eixos."""
     custo_diesel = dist_km * CUSTO_DIESEL_POR_KM
     custo_pedagio = dist_km * (eixos * CUSTO_PEDAGIO_POR_EIXO_KM)
     return custo_diesel + custo_pedagio, custo_pedagio
 
 def calcular_co2(dist_km: float) -> tuple[float, float, float]:
-    """Return ``(co2_diesel_kg, co2_hibrido_kg, co2_eletrico_kg)`` for the route.
+    """Retorna ``(co2_diesel_kg, co2_hibrido_kg, co2_eletrico_kg)`` para a rota.
 
-    Uses consistent fuel-efficiency and emission-factor constants so the
-    summary metric and the ESG comparison chart always agree.
+    Usa constantes consistentes de eficiência de combustível e fator de emissão
+    para que a métrica resumida e o gráfico ESG estejam sempre de acordo.
     """
     co2_diesel = (dist_km / EFICIENCIA_DIESEL_KM_L) * CO2_DIESEL_KG_L
     co2_hibrido = co2_diesel * CO2_HIBRID_FATOR
     return co2_diesel, co2_hibrido, 0.0
 
 def formatar_tempo_conducao(dist_km: float, velocidade: float = 72.0) -> str:
-    """Return driving time as a human-readable string (e.g. ``'14h 30min'``)."""
+    """Retorna o tempo de condução formatado (ex.: ``'14h 30min'``)."""
     if velocidade <= 0:
         return "—"
     total_min = int((dist_km / velocidade) * 60)
@@ -152,10 +153,11 @@ def calcular_eta_paradas(
     h_partida: datetime.time,
     velocidade: float = 72.0,
 ) -> list[dict]:
-    """Return a list of ETA dicts for each stop in *rota*.
+    """Retorna uma lista de dicts com ETA para cada parada em *rota*.
 
-    The first stop is always at departure time (0 km travelled).  The last stop
-    arrives after the full *dist_km*.  Intermediate stops are spaced evenly.
+    A primeira parada está sempre no horário de partida (0 km percorridos).
+    A última parada chega após a *dist_km* total.  Paradas intermediárias
+    são espaçadas uniformemente.
     """
     n = len(rota)
     partida = datetime.datetime.combine(datetime.date.today(), h_partida)

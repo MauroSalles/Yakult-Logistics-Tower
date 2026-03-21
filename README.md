@@ -1,137 +1,137 @@
-# 🚛 Yakult Elite Logistics
+# 🚛 Yakult Logística Elite
 
-> Interactive logistics dashboard for the Yakult cold-chain distribution network across South America.
+> Dashboard interativo de logística para a rede de distribuição Yakult com cadeia de frio na América do Sul.
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Streamlit](https://img.shields.io/badge/streamlit-1.54-red)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Licença: MIT](https://img.shields.io/badge/licença-MIT-green)
 
 ---
 
-## Overview
+## Visão Geral
 
-**Yakult Elite Logistics** is a Streamlit-based command-and-control dashboard that
-provides real-time route planning, cost analysis, CO₂ footprint estimation, and
-cold-chain integrity monitoring for the Yakult distribution fleet operating in
-Brazil, Argentina, and Chile.
+**Yakult Logística Elite** é um dashboard de comando e controle baseado em Streamlit que
+oferece planejamento de rotas em tempo real, análise de custos, estimativa de pegada
+de CO₂ e monitoramento de integridade da cadeia de frio para a frota de distribuição
+Yakult operando no Brasil, Argentina e Chile.
 
-### Key features
+### Funcionalidades principais
 
-| Feature | Description |
-|---------|-------------|
-| **Route planning** | Add / remove stops, geocode via Nominatim, and compute optimal driving routes through the OSRM API |
-| **Cost analysis** | Diesel + toll breakdown per km, with configurable vehicle type (2 / 3 / 6 axles) |
-| **ETA forecast** | Per-stop arrival time based on adjustable average speed (40 – 120 km/h) with CSV export |
-| **ESG dashboard** | Side-by-side CO₂ comparison — Diesel vs Hybrid vs Electric |
-| **Cold-chain monitor** | Temperature slider with 3-level alert system (stable / warning / critical) |
-| **Tactical map** | Dark-mode Folium map with GeoJSON route overlay and truck markers |
+| Funcionalidade | Descrição |
+|----------------|-----------|
+| **Planejamento de rotas** | Adicionar / remover paradas, geocodificar via Nominatim e calcular rotas rodoviárias ótimas pela API OSRM |
+| **Análise de custos** | Breakdown diesel + pedágio por km, com tipo de veículo configurável (2 / 3 / 6 eixos) |
+| **Previsão de ETA** | Horário de chegada por parada baseado em velocidade média ajustável (40 – 120 km/h) com exportação CSV |
+| **Dashboard ESG** | Comparação lado a lado de CO₂ — Diesel vs Híbrido vs Elétrico |
+| **Monitor de cadeia de frio** | Slider de temperatura com sistema de alerta em 3 níveis (estável / atenção / crítico) |
+| **Mapa tático** | Mapa Folium em dark mode com sobreposição de rota GeoJSON e marcadores de caminhão |
 
 ---
 
-## Prerequisites
+## Pré-requisitos
 
-- **Python 3.10+** (tested on 3.11 / 3.12)
-- A virtual environment is recommended
+- **Python 3.10+** (testado em 3.11 / 3.12)
+- Ambiente virtual é recomendado
 
-## Quick start
+## Início rápido
 
 ```bash
-# 1. Clone the repository
+# 1. Clone o repositório
 git clone https://github.com/MauroSalles/Yakult-Logistics-Tower.git
 cd Yakult-Logistics-Tower/Projeto\ Yakult
 
-# 2. Create & activate a virtual environment
+# 2. Crie e ative um ambiente virtual
 python -m venv .venv
 source .venv/bin/activate   # Linux / macOS
 # .venv\Scripts\activate    # Windows
 
-# 3. Install dependencies
+# 3. Instale as dependências
 pip install -r requirements.txt
 
-# 4. Launch the dashboard
+# 4. Inicie o dashboard
 streamlit run app_logistica.py
 ```
 
-The dashboard opens automatically in your default browser.
+O dashboard abre automaticamente no navegador padrão.
 
 ---
 
-## Project structure
+## Estrutura do projeto
 
 ```
 Projeto Yakult/
-├── app_logistica.py          # Main Streamlit application
-├── config.py                 # Centralised configuration (constants, thresholds, API settings)
+├── app_logistica.py          # Aplicação principal em Streamlit
+├── config.py                 # Configuração centralizada (constantes, limiares, APIs)
 ├── tests/
-│   └── test_app.py           # Pytest test suite (31 tests)
-├── mapa_yakult.ipynb          # Exploratory Jupyter notebook
-├── requirements.txt           # Pinned Python dependencies
-├── pyproject.toml             # Project metadata + tool configs (ruff, pytest)
-├── Makefile                   # Developer shortcuts (run, test, lint, format)
-├── Relatorio_Logistica_Yakult.pdf  # Final project report
+│   └── test_app.py           # Suíte de testes Pytest (31 testes)
+├── mapa_yakult.ipynb          # Notebook Jupyter exploratório
+├── requirements.txt           # Dependências Python fixadas
+├── pyproject.toml             # Metadados do projeto + configs de ferramentas (ruff, pytest)
+├── Makefile                   # Atalhos para desenvolvedores (run, test, lint, format)
+├── Relatorio_Logistica_Yakult.pdf  # Relatório final do projeto
 └── LICENSE                    # MIT
 ```
 
-## Configuration
+## Configuração
 
-All tunable parameters are centralised in [`config.py`](Projeto%20Yakult/config.py).
-Every constant can be overridden via environment variables — no code changes required:
+Todos os parâmetros ajustáveis estão centralizados em [`config.py`](Projeto%20Yakult/config.py).
+Cada constante pode ser sobrescrita via variáveis de ambiente — sem necessidade de alterar código:
 
 ```bash
-export OSRM_BASE_URL="http://your-osrm-instance:5000"
+export OSRM_BASE_URL="http://seu-osrm-instance:5000"
 export CUSTO_DIESEL_POR_KM="2.50"
 export TEMP_CRITICO="10"
 streamlit run app_logistica.py
 ```
 
-See the full list of configurable values in the file header.
+Veja a lista completa de valores configuráveis no cabeçalho do arquivo.
 
 ---
 
-## Testing
+## Testes
 
 ```bash
-# Run the full suite
+# Executar a suíte completa
 make test
-# or
+# ou
 python -m pytest
 
-# Run with verbose output
+# Executar com saída detalhada
 python -m pytest -v
 ```
 
-The suite covers: `calcula_custos`, `formatar_tempo_conducao`, `calcular_eta_paradas`,
-`calcular_co2`, `buscar_coords`, and the configuration module.
+A suíte cobre: `calcula_custos`, `formatar_tempo_conducao`, `calcular_eta_paradas`,
+`calcular_co2`, `buscar_coords` e o módulo de configuração.
 
-## Development
+## Desenvolvimento
 
 ```bash
-# Lint (read-only)
+# Lint (somente leitura)
 make lint
 
-# Auto-format
+# Auto-formatação
 make format
 
-# Remove caches
+# Limpar caches
 make clean
 ```
 
 ---
 
-## Architecture
+## Arquitetura
 
 ```
 ┌──────────────┐   HTTP/JSON   ┌───────────────────┐
 │  Nominatim   │◄─────────────►│                   │
-│  (geocoding) │               │   app_logistica   │
+│ (geocodific.)│               │   app_logistica   │
 └──────────────┘               │      .py          │
                                │                   │
 ┌──────────────┐   HTTP/JSON   │   ┌───────────┐   │   ┌────────────┐
-│   OSRM API   │◄─────────────►│   │ config.py │   │──►│  Streamlit │
-│  (routing)   │               │   └───────────┘   │   │  Browser   │
+│   API OSRM   │◄─────────────►│   │ config.py │   │──►│  Streamlit │
+│   (rotas)    │               │   └───────────┘   │   │  Navegador │
 └──────────────┘               └───────────────────┘   └────────────┘
 ```
 
-## License
+## Licença
 
-This project is licensed under the [MIT License](Projeto%20Yakult/LICENSE).
+Este projeto está licenciado sob a [Licença MIT](Projeto%20Yakult/LICENSE).
